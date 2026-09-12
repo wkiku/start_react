@@ -61,6 +61,9 @@ export function useReactionTest() {
   const startTrial = useCallback((id: number, trial: number) => {
     clearTimers()
 
+    triggerTime.current = null
+    fourthSignalTime.current = null
+
     setTrialNumber(trial)
     setSignalNumber(1)
     setReactionMS(null)
@@ -152,10 +155,15 @@ export function useReactionTest() {
     setPhase("result")
   }, [clearTimers, trialNumber, triggerBeforeFourthSignalMS])
 
-  const registerReaction = useCallback((afterFourth: boolean) => {
+const registerReaction = useCallback(
+  (afterFourth: boolean, tapTime: number) => {
     if (triggerTime.current === null) return
 
-    const reaction = Math.max(0, now() - triggerTime.current)
+    const reaction = Math.max(0, tapTime - triggerTime.current)
+
+    // この試行を終了させる
+    clearTimers()
+    trialID.current += 1
 
     setReactionMS(reaction)
     setFalseStart(false)
@@ -165,7 +173,7 @@ export function useReactionTest() {
       ...previous,
       {
         trial: trialNumber,
-        triggerBeforeFourthSignalMS,
+        triggerBeforeFourthSignalMS: triggerBeforeFourthSignalMS,
         reactionMS: reaction,
         falseStart: false,
         tappedAfterFourthSignal: afterFourth,
@@ -173,31 +181,32 @@ export function useReactionTest() {
     ])
 
     setPhase("result")
-  }, [trialNumber, triggerBeforeFourthSignalMS])
+  },
+  [clearTimers, trialNumber, triggerBeforeFourthSignalMS],)
 
-  const handleTap = useCallback(() => {
-    if (!running.current) return
+const handleTap = useCallback(() => {
+  if (!running.current) return
 
-    switch (phase) {
-      case "signal1":
-      case "signal2":
-      case "signal3":
-      case "waiting":
-        registerFalseStart()
-        break
+  const currentTime = now()
 
-      case "triggered":
-        registerReaction(false)
-        break
+  // GO前
+  if (triggerTime.current === null) {
+    registerFalseStart()
+    return
+  }
 
-      case "signal4":
-        registerReaction(true)
-        break
+  // 4th signal以降
+  if (
+    fourthSignalTime.current !== null &&
+    currentTime >= fourthSignalTime.current
+  ) {
+    registerReaction(true, currentTime)
+    return
+  }
 
-      default:
-        break
-    }
-  }, [phase, registerFalseStart, registerReaction])
+  // GO後、4th signal前
+  registerReaction(false, currentTime)
+}, [registerFalseStart, registerReaction])
 
   const nextTrial = useCallback(() => {
     if (phase !== "result") return

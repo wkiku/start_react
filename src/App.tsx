@@ -122,12 +122,14 @@ function App() {
         )}
 
         {test.phase === "idle" && (
-          <button
-            className="primary-button start-button"
-            onClick={() => void test.startTest()}
-          >
-            スタート
-          </button>
+          <div className="result-actions">
+            <button
+              className="primary-button start-button"
+              onClick={() => void test.startTest()}
+            >
+              スタート
+            </button>
+          </div>
         )}
 
         {isActive && (
@@ -156,7 +158,7 @@ function App() {
                   </span>
                   <span>
                     {result.falseStart
-                      ? "FLY"
+                      ? "フライング"
                       : `${Math.round(result.reactionMS ?? 0)}ms`}
                   </span>
                 </div>
