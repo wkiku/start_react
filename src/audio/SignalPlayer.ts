@@ -3,8 +3,8 @@ export class SignalPlayer {
   private sig2: HTMLAudioElement
 
   constructor() {
-    this.sig1 = new Audio("/sig1.mp3")
-    this.sig2 = new Audio("/sig2.mp3")
+    this.sig1 = new Audio(`${import.meta.env.BASE_URL}sig1.mp3`)
+    this.sig2 = new Audio(`${import.meta.env.BASE_URL}sig2.mp3`)
 
     this.sig1.preload = "auto"
     this.sig2.preload = "auto"
