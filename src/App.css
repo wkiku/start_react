@@ -1,0 +1,298 @@
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  color: #111827;
+  background: #f3f4f6;
+  font-synthesis: none;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+button {
+  font: inherit;
+}
+
+.app {
+  width: 100%;
+  height: 100%;
+  min-height: 100dvh;
+  background: #f3f4f6;
+  transition: background 80ms linear;
+}
+
+.app.go {
+  background: #22c55e;
+}
+
+.app.fourth {
+  background: #86efac;
+}
+
+.app.flying {
+  background: #ef4444;
+}
+
+.test-screen {
+  width: 100%;
+  height: 100%;
+  min-height: 100dvh;
+  padding:
+    max(20px, env(safe-area-inset-top))
+    max(20px, env(safe-area-inset-right))
+    max(20px, env(safe-area-inset-bottom))
+    max(20px, env(safe-area-inset-left));
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+}
+
+.header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  min-height: 36px;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.timing {
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  opacity: 0.75;
+}
+
+.main-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.big {
+  font-size: clamp(90px, 18vw, 160px);
+  line-height: 0.9;
+  font-weight: 900;
+  letter-spacing: -0.05em;
+}
+
+.idle-text {
+  font-size: clamp(42px, 9vw, 80px);
+}
+
+.go-text {
+  font-weight: 950;
+}
+
+.sub-text {
+  margin-top: 18px;
+  font-size: clamp(22px, 4vw, 36px);
+  font-weight: 800;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.tap-text {
+  margin-top: 18px;
+  font-size: clamp(26px, 5vw, 44px);
+  font-weight: 900;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.result-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.reaction {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: clamp(64px, 13vw, 110px);
+  font-weight: 900;
+}
+
+.reaction span {
+  font-size: 0.35em;
+}
+
+.flying-text {
+  font-size: clamp(50px, 11vw, 100px);
+  font-weight: 950;
+}
+
+.small-text {
+  margin-top: 10px;
+  font-size: 18px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.primary-button,
+.secondary-button {
+  min-height: 58px;
+  padding: 12px 32px;
+  border-radius: 14px;
+  border: 0;
+  font-weight: 800;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.primary-button {
+  color: white;
+  background: #111827;
+}
+
+.primary-button:hover {
+  opacity: 0.88;
+}
+
+.secondary-button {
+  color: #111827;
+  background: white;
+  border: 1px solid #d1d5db;
+}
+
+.start-button {
+  width: 100%;
+  max-width: 420px;
+  margin-bottom: 12px;
+  font-size: 22px;
+}
+
+.result-actions {
+  display: flex;
+  justify-content: center;
+  padding-bottom: 12px;
+}
+
+.result-actions .primary-button {
+  min-width: 190px;
+  font-size: 20px;
+}
+
+.hint {
+  text-align: center;
+  padding: 10px 0 4px;
+  font-weight: 700;
+  opacity: 0.6;
+}
+
+.finished-main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.finished-area {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding-bottom: 8px;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.stat {
+  padding: 10px 4px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.65);
+  border-radius: 12px;
+}
+
+.stat-title {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.stat-value {
+  font-size: 21px;
+  font-weight: 900;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.stat-unit {
+  font-size: 10px;
+  opacity: 0.6;
+}
+
+.false-start-count {
+  margin: 12px 0;
+  text-align: center;
+  font-weight: 800;
+}
+
+.history {
+  max-height: 150px;
+  overflow-y: auto;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.55);
+  border-radius: 12px;
+}
+
+.history-row {
+  display: grid;
+  grid-template-columns: 40px 1fr 1fr;
+  padding: 4px 0;
+  font-size: 13px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.button-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+@media (max-width: 600px) {
+  .test-screen {
+    padding: 16px;
+  }
+
+  .header {
+    align-items: flex-start;
+  }
+
+  .timing {
+    text-align: right;
+  }
+
+  .stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .history {
+    max-height: 120px;
+  }
+}
