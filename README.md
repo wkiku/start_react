@@ -1,6 +1,7 @@
-# Runbike Reaction Test SPA
+# Runbike Start Reaction Test
 
 React + TypeScript + Vite で作ったランバイク用シグナル反応テストSPAです。
+子どもがフライング気味にスタート板に引っかかる事が多いため、予測スタートせずにスタート板が倒れるのを視認してから動作する練習のために作成しました。
 
 ## 起動
 
