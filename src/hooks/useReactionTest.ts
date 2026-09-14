@@ -122,7 +122,6 @@ export function useReactionTest() {
     trialID.current += 1
     const id = trialID.current
 
-    results.length = 0
     setResults([])
     setTrialNumber(1)
     running.current = true
@@ -155,34 +154,36 @@ export function useReactionTest() {
     setPhase("result")
   }, [clearTimers, trialNumber, triggerBeforeFourthSignalMS])
 
-const registerReaction = useCallback(
-  (afterFourth: boolean, tapTime: number) => {
-    if (triggerTime.current === null) return
+  const registerReaction = useCallback(
+    (afterFourth: boolean, tapTime: number) => {
+      if (triggerTime.current === null) return
+      if (phase === "result") return
 
-    const reaction = Math.max(0, tapTime - triggerTime.current)
+      const reaction = Math.max(0, tapTime - triggerTime.current)
 
-    // この試行を終了させる
-    clearTimers()
-    trialID.current += 1
+      // この試行を終了させる
+      clearTimers()
+      trialID.current += 1
 
-    setReactionMS(reaction)
-    setFalseStart(false)
-    setTappedAfterFourthSignal(afterFourth)
+      setReactionMS(reaction)
+      setFalseStart(false)
+      setTappedAfterFourthSignal(afterFourth)
 
-    setResults((previous) => [
-      ...previous,
-      {
-        trial: trialNumber,
-        triggerBeforeFourthSignalMS: triggerBeforeFourthSignalMS,
-        reactionMS: reaction,
-        falseStart: false,
-        tappedAfterFourthSignal: afterFourth,
-      },
-    ])
+      setResults((previous) => [
+        ...previous,
+        {
+          trial: trialNumber,
+          triggerBeforeFourthSignalMS: triggerBeforeFourthSignalMS,
+          reactionMS: reaction,
+          falseStart: false,
+          tappedAfterFourthSignal: afterFourth,
+        },
+      ])
 
-    setPhase("result")
-  },
-  [clearTimers, trialNumber, triggerBeforeFourthSignalMS],)
+      setPhase("result")
+    },
+    [clearTimers, phase, trialNumber, triggerBeforeFourthSignalMS],
+  )
 
 const handleTap = useCallback(() => {
   if (!running.current) return
