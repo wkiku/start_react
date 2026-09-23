@@ -52,7 +52,7 @@ function App() {
                 : `TRIAL ${test.trialNumber} / ${test.trialCount}`}
           </div>
 
-          {!isFinished && test.phase !== "idle" && (
+          {isResult && (
             <div className="timing">
               4音目まで{" "}
               {Math.round(test.triggerBeforeFourthSignalMS)} ms
