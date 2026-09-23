@@ -107,6 +107,26 @@ button {
 .idle-text {
   font-size: clamp(42px, 9vw, 80px);
 }
+.trial-select {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 28px;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.trial-select select {
+  min-width: 100px;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background: white;
+  color: #111827;
+  font-size: 20px;
+  font-weight: 700;
+  text-align: center;
+}
 
 .go-text {
   font-weight: 950;
@@ -254,7 +274,10 @@ button {
 
 .history {
   max-height: 150px;
-  overflow-y: auto;
+  width: 100%;
+  max-width: 560px;
+  margin: 24px auto 0;
+  overflow: auto;
   padding: 4px 10px;
   background: rgba(255, 255, 255, 0.55);
   border-radius: 12px;
@@ -262,10 +285,42 @@ button {
 
 .history-row {
   display: grid;
-  grid-template-columns: 40px 1fr 1fr;
-  padding: 4px 0;
+  grid-template-columns: 1fr 2fr 2fr 2fr;
+  align-items: center;
+  width: 100%;
+  height: auto;
+
+  white-space: nowrap;
+  margin: 0;
+  padding: 0;
   font-size: 13px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.history-row span {
+  min-width: 0;
+  margin: 0;
+  padding: 0 2px;
+  height: auto;
+  line-height: normal;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.history-header {
+  height: auto;
+  font-weight: 700;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.history-header span {
+  font-size: 0.72rem;
+  height: auto;
+  line-height: normal;
+}
+
+.history-row:not(.history-header) span {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .button-row {

@@ -4,6 +4,18 @@ function formatMS(value: number | null): string {
   return value === null ? "-" : `${Math.round(value)}`
 }
 
+function formatSignedMS(value: number | null): string {
+  if (value === null) return "-"
+
+  const rounded = Math.round(value)
+
+  if (rounded > 0) {
+    return `+${rounded}`
+  }
+
+  return `${rounded}`
+}
+
 function App() {
   const test = useReactionTest()
 
@@ -37,7 +49,7 @@ function App() {
               ? "REACTION TEST"
               : isFinished
                 ? "RESULT"
-                : `TRIAL ${test.trialNumber} / 10`}
+                : `TRIAL ${test.trialNumber} / ${test.trialCount}`}
           </div>
 
           {!isFinished && test.phase !== "idle" && (
@@ -52,10 +64,34 @@ function App() {
           {test.phase === "idle" && (
             <>
               <div className="big idle-text">REACTION</div>
+
+              <div className="trial-select">
+                <label htmlFor="trial-count">
+                  試行回数
+                </label>
+
+                <select
+                  id="trial-count"
+                  value={test.trialCount}
+                  onChange={(event) =>
+                    test.setTrialCount(Number(event.target.value))
+                  }
+                  onPointerDown={(event) => event.stopPropagation()}
+                >
+                  {Array.from({ length: 10 }, (_, index) => index + 1).map(
+                    (count) => (
+                      <option key={count} value={count}>
+                        {count}
+                      </option>
+                    ),
+                  )}
+                </select>
+              </div>
+
               <div className="sub-text">START TEST</div>
             </>
           )}
-
+          
           {["signal1", "signal2", "signal3"].includes(test.phase) && (
             <>
               <div className="big">{test.signalNumber}</div>
@@ -84,7 +120,11 @@ function App() {
                   <div className="flying-text">FLYING</div>
                   <div className="sub-text">予測スタート</div>
                   <div className="small-text">
-                    GOまで {Math.round(test.triggerBeforeFourthSignalMS)} ms
+                    GOまで{" "}
+                    {Math.round(
+                      test.triggerBeforeFourthSignalMS,
+                    )}{" "}
+                    ms
                   </div>
                 </>
               ) : (
@@ -116,7 +156,7 @@ function App() {
               className="primary-button"
               onClick={test.nextTrial}
             >
-              {test.results.length >= 10 ? "結果を見る" : "次へ"}
+              {test.results.length >= test.trialCount ? "結果を見る" : "次へ"}
             </button>
           </div>
         )}
@@ -139,36 +179,64 @@ function App() {
         {isFinished && (
           <div className="finished-area">
             <div className="stats">
-              <Stat title="平均" value={test.average} />
+              <Stat title="平均値" value={test.average} />
               <Stat title="中央値" value={test.median} />
               <Stat title="最速" value={test.fastest} />
               <Stat title="最遅" value={test.slowest} />
             </div>
 
             <div className="false-start-count">
-              フライング {test.falseStartCount} / 10
+              フライング {test.falseStartCount} / {test.trialCount}
             </div>
 
             <div className="history">
+              {/* カラム名 */}
+              <div className="history-row history-header">
+                <span>試行</span>
+                <span>GO位置</span>
+                <span>GO→タップ</span>
+                <span>4音目→タップ</span>
+              </div>
+
               {test.results.map((result) => (
-                <div className="history-row" key={result.trial}>
+                <div
+                  className="history-row"
+                  key={result.trial}
+                >
                   <span>{result.trial}</span>
                   <span>
-                    {Math.round(result.triggerBeforeFourthSignalMS)}ms前
+                    -{Math.round(
+                      result.triggerBeforeFourthSignalMS,
+                    )}
+                    ms
                   </span>
                   <span>
                     {result.falseStart
                       ? "フライング"
-                      : `${Math.round(result.reactionMS ?? 0)}ms`}
+                      : `${Math.round(
+                          result.reactionMS ?? 0,
+                        )}ms`}
+                  </span>
+                  <span>
+                    {formatSignedMS(
+                      result.fourthSignalToTapMS,
+                    )}
+                    {result.fourthSignalToTapMS !== null
+                      ? "ms"
+                      : ""}
                   </span>
                 </div>
               ))}
             </div>
 
             <div className="button-row">
-              <button className="secondary-button" onClick={test.reset}>
+              <button
+                className="secondary-button"
+                onClick={test.reset}
+              >
                 リセット
               </button>
+
               <button
                 className="primary-button"
                 onClick={() => void test.startTest()}

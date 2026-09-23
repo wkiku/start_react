@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { SignalPlayer } from "../audio/SignalPlayer.ts" 
+import { SignalPlayer } from "../audio/SignalPlayer.ts"
 
 export type Phase =
   | "idle"
@@ -16,11 +16,12 @@ export interface TrialResult {
   trial: number
   triggerBeforeFourthSignalMS: number
   reactionMS: number | null
+  fourthSignalToTapMS: number | null
   falseStart: boolean
   tappedAfterFourthSignal: boolean
 }
 
-const TRIALS = 10
+// const TRIALS = 10
 const SIGNAL_INTERVAL_MS = 1000
 const GO_MIN_BEFORE_FOURTH_MS = 0
 const GO_MAX_BEFORE_FOURTH_MS = 200
@@ -33,16 +34,20 @@ export function useReactionTest() {
   const [phase, setPhase] = useState<Phase>("idle")
   const [signalNumber, setSignalNumber] = useState(0)
   const [trialNumber, setTrialNumber] = useState(0)
+  const [trialCount, setTrialCount] = useState(10)
   const [reactionMS, setReactionMS] = useState<number | null>(null)
   const [falseStart, setFalseStart] = useState(false)
-  const [tappedAfterFourthSignal, setTappedAfterFourthSignal] = useState(false)
-  const [triggerBeforeFourthSignalMS, setTriggerBeforeFourthSignalMS] = useState(0)
+  const [tappedAfterFourthSignal, setTappedAfterFourthSignal] =
+    useState(false)
+  const [triggerBeforeFourthSignalMS, setTriggerBeforeFourthSignalMS] =
+    useState(0)
   const [results, setResults] = useState<TrialResult[]>([])
 
   const trialID = useRef(0)
   const timers = useRef<number[]>([])
   const triggerTime = useRef<number | null>(null)
   const fourthSignalTime = useRef<number | null>(null)
+  const tappedBeforeFourth = useRef(false)
   const running = useRef(false)
   const player = useRef(new SignalPlayer())
 
@@ -58,62 +63,70 @@ export function useReactionTest() {
     timers.current.push(timer)
   }, [])
 
-  const startTrial = useCallback((id: number, trial: number) => {
-    clearTimers()
+  const startTrial = useCallback(
+    (id: number, trial: number) => {
+      clearTimers()
 
-    triggerTime.current = null
-    fourthSignalTime.current = null
+      triggerTime.current = null
+      fourthSignalTime.current = null
+      tappedBeforeFourth.current = false
 
-    setTrialNumber(trial)
-    setSignalNumber(1)
-    setReactionMS(null)
-    setFalseStart(false)
-    setTappedAfterFourthSignal(false)
-    setPhase("signal1")
+      setTrialNumber(trial)
+      setSignalNumber(1)
+      setReactionMS(null)
+      setFalseStart(false)
+      setTappedAfterFourthSignal(false)
+      setPhase("signal1")
 
-    player.current.playSignal1()
-
-    schedule(() => {
-      if (trialID.current !== id) return
-      setSignalNumber(2)
-      setPhase("signal2")
       player.current.playSignal1()
-    }, SIGNAL_INTERVAL_MS)
 
-    schedule(() => {
-      if (trialID.current !== id) return
-      setSignalNumber(3)
-      setPhase("signal3")
-      player.current.playSignal1()
-    }, SIGNAL_INTERVAL_MS * 2)
+      schedule(() => {
+        if (trialID.current !== id) return
+        setSignalNumber(2)
+        setPhase("signal2")
+        player.current.playSignal1()
+      }, SIGNAL_INTERVAL_MS)
 
-    const beforeFourth =
-      Math.random() *
-      (GO_MAX_BEFORE_FOURTH_MS - GO_MIN_BEFORE_FOURTH_MS) +
-      GO_MIN_BEFORE_FOURTH_MS
+      schedule(() => {
+        if (trialID.current !== id) return
+        setSignalNumber(3)
+        setPhase("signal3")
+        player.current.playSignal1()
+      }, SIGNAL_INTERVAL_MS * 2)
 
-    setTriggerBeforeFourthSignalMS(beforeFourth)
+      const beforeFourth =
+        Math.random() *
+          (GO_MAX_BEFORE_FOURTH_MS - GO_MIN_BEFORE_FOURTH_MS) +
+        GO_MIN_BEFORE_FOURTH_MS
 
-    const goDelay =
-      SIGNAL_INTERVAL_MS -
-      beforeFourth
+      setTriggerBeforeFourthSignalMS(beforeFourth)
 
-    schedule(() => {
-      if (trialID.current !== id || !running.current) return
+      const goDelay = SIGNAL_INTERVAL_MS - beforeFourth
 
-      triggerTime.current = now()
-      setPhase("triggered")
-    }, SIGNAL_INTERVAL_MS * 2 + goDelay)
+      schedule(() => {
+        if (trialID.current !== id || !running.current) return
 
-    schedule(() => {
-      if (trialID.current !== id || !running.current) return
+        triggerTime.current = now()
+        setPhase("triggered")
+      }, SIGNAL_INTERVAL_MS * 2 + goDelay)
 
-      fourthSignalTime.current = now()
-      setSignalNumber(4)
-      setPhase("signal4")
-      player.current.playSignal2()
-    }, SIGNAL_INTERVAL_MS * 3)
-  }, [clearTimers, schedule])
+      schedule(() => {
+        if (trialID.current !== id || !running.current) return
+
+        fourthSignalTime.current = now()
+        setSignalNumber(4)
+        setPhase("signal4")
+        player.current.playSignal2()
+
+        // GO〜4音目前にすでにタップしていた場合は、
+        // 4音目を鳴らしたあと結果画面へ進む
+        if (tappedBeforeFourth.current) {
+          setPhase("result")
+        }
+      }, SIGNAL_INTERVAL_MS * 3)
+    },
+    [clearTimers, schedule],
+  )
 
   const startTest = useCallback(async () => {
     clearTimers()
@@ -131,39 +144,91 @@ export function useReactionTest() {
     startTrial(id, 1)
   }, [clearTimers, startTrial])
 
-  const registerFalseStart = useCallback(() => {
-    // この試行の残りのGO/4音目を止める
-    clearTimers()
-    trialID.current += 1
+  const registerFalseStart = useCallback(
+    (tapTime: number) => {
+      // GO前のタップ
+      if (triggerTime.current === null) {
+        clearTimers()
+        trialID.current += 1
 
-    setFalseStart(true)
-    setReactionMS(null)
-    setTappedAfterFourthSignal(false)
+        setFalseStart(true)
+        setReactionMS(null)
+        setTappedAfterFourthSignal(false)
 
-    setResults((previous) => [
-      ...previous,
-      {
-        trial: trialNumber,
-        triggerBeforeFourthSignalMS,
-        reactionMS: null,
-        falseStart: true,
-        tappedAfterFourthSignal: false,
-      },
-    ])
+        setResults((previous) => [
+          ...previous,
+          {
+            trial: trialNumber,
+            triggerBeforeFourthSignalMS,
+            reactionMS: null,
+            fourthSignalToTapMS: null,
+            falseStart: true,
+            tappedAfterFourthSignal: false,
+          },
+        ])
 
-    setPhase("result")
-  }, [clearTimers, trialNumber, triggerBeforeFourthSignalMS])
+        setPhase("result")
+        return
+      }
+
+      // GO後の処理
+      const expectedFourthSignalTime =
+        triggerTime.current + triggerBeforeFourthSignalMS
+
+      const fourthToTap =
+        tapTime - expectedFourthSignalTime
+
+      clearTimers()
+      trialID.current += 1
+
+      setFalseStart(true)
+      setReactionMS(null)
+      setTappedAfterFourthSignal(false)
+
+      setResults((previous) => [
+        ...previous,
+        {
+          trial: trialNumber,
+          triggerBeforeFourthSignalMS,
+          reactionMS: null,
+          fourthSignalToTapMS: fourthToTap,
+          falseStart: true,
+          tappedAfterFourthSignal: false,
+        },
+      ])
+
+      setPhase("result")
+    },
+    [
+      clearTimers,
+      trialNumber,
+      triggerBeforeFourthSignalMS,
+    ],
+  )
 
   const registerReaction = useCallback(
-    (afterFourth: boolean, tapTime: number) => {
+    (afterFourth: boolean, tapTime: number, keepFourthSignal: boolean) => {
       if (triggerTime.current === null) return
       if (phase === "result") return
 
       const reaction = Math.max(0, tapTime - triggerTime.current)
 
-      // この試行を終了させる
-      clearTimers()
-      trialID.current += 1
+      /*
+      * 通常タップの場合は、実際に4音目が鳴った時刻を使用する。
+      */
+      const fourthToTap =
+        fourthSignalTime.current !== null
+          ? tapTime - fourthSignalTime.current
+          : null
+
+      // GO〜4音目前のタップ
+      if (keepFourthSignal) {
+        tappedBeforeFourth.current = true
+      } else {
+        // 4音目後のタップでは、この試行を終了させる
+        clearTimers()
+        trialID.current += 1
+      }
 
       setReactionMS(reaction)
       setFalseStart(false)
@@ -173,46 +238,65 @@ export function useReactionTest() {
         ...previous,
         {
           trial: trialNumber,
-          triggerBeforeFourthSignalMS: triggerBeforeFourthSignalMS,
+          triggerBeforeFourthSignalMS,
           reactionMS: reaction,
+          fourthSignalToTapMS: fourthToTap,
           falseStart: false,
           tappedAfterFourthSignal: afterFourth,
         },
       ])
 
-      setPhase("result")
+      // GO〜4音目前なら結果画面にしない
+      if (!keepFourthSignal) {
+        setPhase("result")
+      }
     },
-    [clearTimers, phase, trialNumber, triggerBeforeFourthSignalMS],
+    [
+      clearTimers,
+      phase,
+      trialNumber,
+      triggerBeforeFourthSignalMS,
+    ],
   )
 
-const handleTap = useCallback(() => {
-  if (!running.current) return
+  const handleTap = useCallback(() => {
+    if (!running.current) return
 
-  const currentTime = now()
+    const currentTime = now()
 
-  // GO前
-  if (triggerTime.current === null) {
-    registerFalseStart()
-    return
-  }
+    // GO前
+    if (triggerTime.current === null) {
+      /*
+       * 通常はここには入らないが、
+       * GO表示前のタップはフライングとして扱う。
+       */
+      registerFalseStart(currentTime)
+      return
+    }
 
-  // 4th signal以降
-  if (
-    fourthSignalTime.current !== null &&
-    currentTime >= fourthSignalTime.current
-  ) {
-    registerReaction(true, currentTime)
-    return
-  }
+    // 4th signal以降
+    if (
+      fourthSignalTime.current !== null &&
+      currentTime >= fourthSignalTime.current
+    ) {
+      // GO〜4音目前ですでにタップ済みなら、
+      // 4音目後のタップは無効
+      if (tappedBeforeFourth.current) {
+        return
+      }
 
-  // GO後、4th signal前
-  registerReaction(false, currentTime)
-}, [registerFalseStart, registerReaction])
+      registerReaction(true, currentTime, false)
+      return
+    }
+    
+    // GO後、4th signal前
+    registerReaction(false, currentTime, true)
+  }, [registerFalseStart, registerReaction])
 
   const nextTrial = useCallback(() => {
     if (phase !== "result") return
 
-    if (results.length >= TRIALS) {
+    if (results.length >= trialCount) {
       running.current = false
       setPhase("finished")
       return
@@ -228,7 +312,7 @@ const handleTap = useCallback(() => {
     fourthSignalTime.current = null
 
     startTrial(id, nextNumber)
-  }, [clearTimers, phase, results.length, startTrial])
+  }, [clearTimers, phase, results.length, startTrial, trialCount])
 
   const reset = useCallback(() => {
     clearTimers()
@@ -271,13 +355,17 @@ const handleTap = useCallback(() => {
     sorted.length === 0
       ? null
       : sorted.length % 2 === 0
-        ? (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2
+        ? (sorted[sorted.length / 2 - 1] +
+            sorted[sorted.length / 2]) /
+          2
         : sorted[Math.floor(sorted.length / 2)]
 
   const fastest = sorted.length > 0 ? sorted[0] : null
   const slowest = sorted.length > 0 ? sorted[sorted.length - 1] : null
 
-  const falseStartCount = results.filter((result) => result.falseStart).length
+  const falseStartCount = results.filter(
+    (result) => result.falseStart,
+  ).length
 
   return {
     phase,
@@ -297,5 +385,7 @@ const handleTap = useCallback(() => {
     handleTap,
     nextTrial,
     reset,
+    trialCount,
+    setTrialCount,
   }
 }
