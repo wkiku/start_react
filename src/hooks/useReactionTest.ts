@@ -67,6 +67,11 @@ export function useReactionTest() {
     (id: number, trial: number) => {
       clearTimers()
 
+      // Leave a short scheduling lead so the first buffer is queued before playback.
+      const audioStart = player.current.currentTime + 0.05
+      const performanceStart = now() + 50
+      const performanceAt = (offsetMS: number) => performanceStart + offsetMS
+
       triggerTime.current = null
       fourthSignalTime.current = null
       tappedBeforeFourth.current = false
@@ -78,20 +83,20 @@ export function useReactionTest() {
       setTappedAfterFourthSignal(false)
       setPhase("signal1")
 
-      player.current.playSignal1()
+      player.current.scheduleSignal1(audioStart)
 
       schedule(() => {
         if (trialID.current !== id) return
         setSignalNumber(2)
         setPhase("signal2")
-        player.current.playSignal1()
+        player.current.scheduleSignal1(audioStart + SIGNAL_INTERVAL_MS / 1000)
       }, SIGNAL_INTERVAL_MS)
 
       schedule(() => {
         if (trialID.current !== id) return
         setSignalNumber(3)
         setPhase("signal3")
-        player.current.playSignal1()
+        player.current.scheduleSignal1(audioStart + (SIGNAL_INTERVAL_MS * 2) / 1000)
       }, SIGNAL_INTERVAL_MS * 2)
 
       const beforeFourth =
@@ -101,22 +106,22 @@ export function useReactionTest() {
 
       setTriggerBeforeFourthSignalMS(beforeFourth)
 
-      const goDelay = SIGNAL_INTERVAL_MS - beforeFourth
+      const triggerOffset = SIGNAL_INTERVAL_MS * 3 - beforeFourth
+      triggerTime.current = performanceAt(triggerOffset)
+      fourthSignalTime.current = performanceAt(SIGNAL_INTERVAL_MS * 3)
 
       schedule(() => {
         if (trialID.current !== id || !running.current) return
 
-        triggerTime.current = now()
         setPhase("triggered")
-      }, SIGNAL_INTERVAL_MS * 2 + goDelay)
+      }, triggerOffset)
 
       schedule(() => {
         if (trialID.current !== id || !running.current) return
 
-        fourthSignalTime.current = now()
         setSignalNumber(4)
         setPhase("signal4")
-        player.current.playSignal2()
+        player.current.scheduleSignal2(audioStart + (SIGNAL_INTERVAL_MS * 3) / 1000)
 
         // GO〜4音目前にすでにタップしていた場合は、
         // 4音目を鳴らしたあと結果画面へ進む
@@ -130,7 +135,12 @@ export function useReactionTest() {
 
   const startTest = useCallback(async () => {
     clearTimers()
-    await player.current.unlock()
+    try {
+      await player.current.unlock()
+    } catch (error) {
+      console.error("Audio initialization failed:", error)
+      return
+    }
 
     trialID.current += 1
     const id = trialID.current
@@ -265,7 +275,7 @@ export function useReactionTest() {
     const currentTime = now()
 
     // GO前
-    if (triggerTime.current === null) {
+    if (triggerTime.current === null || currentTime < triggerTime.current) {
       /*
        * 通常はここには入らないが、
        * GO表示前のタップはフライングとして扱う。

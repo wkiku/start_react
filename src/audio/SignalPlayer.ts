@@ -1,46 +1,72 @@
+type SignalName = "signal1" | "signal2"
+
+/** Plays decoded, in-memory audio buffers so signals can be scheduled precisely. */
 export class SignalPlayer {
-  private sig1: HTMLAudioElement
-  private sig2: HTMLAudioElement
+  private readonly context: AudioContext
+  private readonly buffers: Record<SignalName, AudioBuffer | null> = {
+    signal1: null,
+    signal2: null,
+  }
+  private loading: Promise<void> | null = null
 
   constructor() {
-    this.sig1 = new Audio(`${import.meta.env.BASE_URL}sig1.mp3`)
-    this.sig2 = new Audio(`${import.meta.env.BASE_URL}sig2.mp3`)
+    const AudioContextConstructor =
+      window.AudioContext ??
+      (window as typeof window & { webkitAudioContext?: typeof AudioContext })
+        .webkitAudioContext
 
-    this.sig1.preload = "auto"
-    this.sig2.preload = "auto"
+    if (!AudioContextConstructor) {
+      throw new Error("Web Audio API is not supported by this browser")
+    }
+
+    this.context = new AudioContextConstructor()
   }
 
+  get currentTime(): number {
+    return this.context.currentTime
+  }
+
+  /** Call directly from a user gesture so Safari can unlock audio playback. */
   async unlock(): Promise<void> {
-    // ブラウザの音声再生制限を解除するため、
-    // ユーザー操作中に再生可能な状態にしておく。
-    await this.sig1.play().then(() => {
-      this.sig1.pause()
-      this.sig1.currentTime = 0
-    }).catch(() => {})
-
-    await this.sig2.play().then(() => {
-      this.sig2.pause()
-      this.sig2.currentTime = 0
-    }).catch(() => {})
+    const resume = this.context.resume()
+    await Promise.all([resume, this.loadBuffers()])
+    if (this.context.state !== "running") await this.context.resume()
   }
 
-  playSignal1(): void {
-    this.play(this.sig1)
+  scheduleSignal1(audioTime: number): void {
+    this.schedule("signal1", audioTime)
   }
 
-  playSignal2(): void {
-    this.play(this.sig2)
+  scheduleSignal2(audioTime: number): void {
+    this.schedule("signal2", audioTime)
   }
 
-  private play(audio: HTMLAudioElement): void {
-    audio.currentTime = 0
-
-    const promise = audio.play()
-
-    if (promise !== undefined) {
-      promise.catch((error) => {
-        console.error("Audio playback failed:", error)
+  private loadBuffers(): Promise<void> {
+    if (!this.loading) {
+      this.loading = Promise.all(
+        (["signal1", "signal2"] as const).map(async (name) => {
+          const file = name === "signal1" ? "sig1.mp3" : "sig2.mp3"
+          const response = await fetch(`${import.meta.env.BASE_URL}${file}`)
+          if (!response.ok) throw new Error(`Could not load ${file}`)
+          const data = await response.arrayBuffer()
+          this.buffers[name] = await this.context.decodeAudioData(data)
+        }),
+      ).then(() => undefined).catch((error: unknown) => {
+        this.loading = null
+        throw error
       })
     }
+
+    return this.loading
+  }
+
+  private schedule(name: SignalName, audioTime: number): void {
+    const buffer = this.buffers[name]
+    if (!buffer || this.context.state !== "running") return
+
+    const source = this.context.createBufferSource()
+    source.buffer = buffer
+    source.connect(this.context.destination)
+    source.start(Math.max(audioTime, this.context.currentTime))
   }
 }
